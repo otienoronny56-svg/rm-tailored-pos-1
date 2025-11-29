@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced Reports - RM TAILORED</title>
+    <link rel="stylesheet" href="global.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f8fafc; color: #1e293b; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+        .header h1 { color: #1e293b; font-size: 28px; font-weight: 700; }
+        
+        /* Filters */
+        .filters { 
+            background: white; 
+            padding: 24px; 
+            border-radius: 12px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .filter-group { margin-bottom: 0; }
+        .filter-label { display: block; margin-bottom: 6px; font-weight: 600; color: #475569; font-size: 14px; }
+        .filter-input { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; }
+        
+        /* Tabs */
+        .tabs { display: flex; margin-bottom: 24px; border-bottom: 1px solid #e2e8f0; }
+        .tab { padding: 12px 24px; cursor: pointer; border: 1px solid transparent; background: none; font-size: 14px; font-weight: 600; color: #64748b; }
+        .tab.active { color: #3b82f6; border: 1px solid #e2e8f0; border-bottom: 1px solid white; border-radius: 6px 6px 0 0; background: white; }
+        
+        /* Stats Grid */
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 30px; 
+        }
+        .stat-card { 
+            background: white; 
+            padding: 24px; 
+            border-radius: 12px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+            border-left: 4px solid #3b82f6;
+        }
+        .stat-card.revenue { border-left-color: #10b981; }
+        .stat-card.expenses { border-left-color: #ef4444; }
+        .stat-card.profit { border-left-color: #f59e0b; }
+        .stat-card.orders { border-left-color: #8b5cf6; }
+        .stat-number { font-size: 2rem; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+        .stat-label { color: #64748b; font-size: 14px; font-weight: 600; }
+        
+        /* Charts Grid */
+        .charts-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); 
+            gap: 24px; 
+            margin-bottom: 30px; 
+        }
+        .chart-container { 
+            background: white; 
+            padding: 24px; 
+            border-radius: 12px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .chart-header { display: flex; justify-content: between; align-items: center; margin-bottom: 20px; }
+        .chart-title { font-size: 18px; font-weight: 600; color: #1e293b; }
+        
+        /* Tables */
+        .table-container { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8fafc; padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; font-size: 14px; border-bottom: 1px solid #e2e8f0; }
+        td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; color: #475569; }
+        
+        .loading { text-align: center; padding: 60px; color: #64748b; }
+        .empty-state { text-align: center; padding: 40px; color: #94a3b8; }
+        
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-back { background: #dc2626; color: white; }
+        
+        @media (max-width: 768px) {
+            .charts-grid { grid-template-columns: 1fr; }
+            .filters { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📈 ADVANCED ANALYTICS</h1>
+            <div class="flex gap-md">
+                <button class="btn btn-danger" onclick="goBack()">⬅ BACK TO DASHBOARD</button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters card">
+            <div class="filter-group">
+                <label class="filter-label">Date From</label>
+                <input type="date" id="dateFrom" class="filter-input">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Date To</label>
+                <input type="date" id="dateTo" class="filter-input">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Report Type</label>
+                <select id="reportType" class="filter-input">
+                    <option value="overview">Business Overview</option>
+                    <option value="financial">Financial Analysis</option>
+                    <option value="orders">Orders Analysis</option>
+                    <option value="expenses">Expenses Analysis</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">&nbsp;</label>
+                <button class="btn btn-primary" onclick="loadReports()" style="width: 100%;">
+                    <i class="fas fa-chart-line"></i> GENERATE REPORT
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('overview')">📊 Business Overview</div>
+            <div class="tab" onclick="showTab('financial')">💰 Financial Analysis</div>
+            <div class="tab" onclick="showTab('orders')">👕 Orders Analysis</div>
+            <div class="tab" onclick="showTab('expenses')">💸 Expenses Analysis</div>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="overviewTab" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card revenue">
+                    <div class="stat-number" id="totalRevenue">KSh 0</div>
+                    <div class="stat-label">Total Revenue</div>
+                </div>
+                <div class="stat-card expenses">
+                    <div class="stat-number" id="totalExpenses">KSh 0</div>
+                    <div class="stat-label">Total Expenses</div>
+                </div>
+                <div class="stat-card profit">
+                    <div class="stat-number" id="netProfit">KSh 0</div>
+                    <div class="stat-label">Net Profit</div>
+                </div>
+                <div class="stat-card orders">
+                    <div class="stat-number" id="totalOrders">0</div>
+                    <div class="stat-label">Total Orders</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="completedOrders">0</div>
+                    <div class="stat-label">Completed Orders</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="completionRate">0%</div>
+                    <div class="stat-label">Completion Rate</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container card">
+                    <div class="card-header"><div class="chart-title">💰 Revenue vs Expenses Trend</div></div>
+                    <div class="card-body"><canvas id="revenueExpensesChart" height="250"></canvas></div>
+                </div>
+                <div class="chart-container card">
+                    <div class="card-header"><div class="chart-title">📈 Monthly Performance</div></div>
+                    <div class="card-body"><canvas id="monthlyPerformanceChart" height="250"></canvas></div>
+                </div>
+                <div class="chart-container card">
+                    <div class="card-header"><div class="chart-title">👕 Orders by Type</div></div>
+                    <div class="card-body"><canvas id="ordersByTypeChart" height="250"></canvas></div>
+                </div>
+                <div class="chart-container card">
+                    <div class="card-header"><div class="chart-title">💸 Expenses Breakdown</div></div>
+                    <div class="card-body"><canvas id="expensesByCategoryChart" height="250"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Tab -->
+        <div id="financialTab" class="tab-content" style="display: none;">
+            <div class="table-container card">
+                <div class="card-header"><div class="chart-title">💰 Financial Summary</div></div>
+                <div id="financialDetails" class="card-body">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading financial data...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orders Tab -->
+        <div id="ordersTab" class="tab-content" style="display: none;">
+            <div class="table-container card">
+                <div class="card-header"><div class="chart-title">👕 Orders Performance</div></div>
+                <div id="ordersAnalysis" class="card-body">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading orders analysis...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expenses Tab -->
+        <div id="expensesTab" class="tab-content" style="display: none;">
+            <div class="table-container card">
+                <div class="card-header"><div class="chart-title">💸 Expenses Analysis</div></div>
+                <div id="expensesAnalysis" class="card-body">
+                    <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading expenses analysis...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+        const supabaseUrl = 'https://jahrvqdxbdcnqnxuhewf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphaHJ2cWR4YmRjbnFueHVoZXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3MDY4ODUsImV4cCI6MjA3ODI4Mjg4NX0._Q8_o41iN2_roejx67FvOQ8DlMApPdw0L3bmWhymgNc';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let charts = {};
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            currentUser = await validateSession('admin');
+            
+            // Set default dates (last 30 days)
+            const today = new Date();
+            const lastMonth = new Date();
+            lastMonth.setDate(today.getDate() - 30);
+            document.getElementById('dateFrom').value = lastMonth.toISOString().split('T')[0];
+            document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+
+            // Load initial reports
+            loadReports();
+        });
+
+        async function loadReports() {
+            try {
+                const dateFrom = document.getElementById('dateFrom').value;
+                const dateTo = document.getElementById('dateTo').value;
+
+                // Load all data
+                const [ordersData, expensesData, paymentsData] = await Promise.all([
+                    loadOrders(dateFrom, dateTo),
+                    loadExpenses(dateFrom, dateTo),
+                    loadPayments(dateFrom, dateTo)  // FIXED: Using correct column name
+                ]);
+
+                // Update all reports
+                updateOverviewStats(ordersData, expensesData, paymentsData);
+                createCharts(ordersData, expensesData, paymentsData);
+                updateFinancialDetails(ordersData, expensesData, paymentsData);
+                updateOrdersAnalysis(ordersData);
+                updateExpensesAnalysis(expensesData);
+
+            } catch (error) {
+                console.error("Error loading reports:", error);
+                alert('Error loading reports: ' + error.message);
+            }
+        }
+
+        async function loadOrders(dateFrom, dateTo) {
+            const { data: orders, error } = await supabase
+                .from('orders')
+                .select('*')
+                .gte('created_at', dateFrom + 'T00:00:00')
+                .lte('created_at', dateTo + 'T23:59:59');
+
+            if (error) throw error;
+            return orders || [];
+        }
+
+        async function loadExpenses(dateFrom, dateTo) {
+            const { data: expenses, error } = await supabase
+                .from('expenses')
+                .select('*')
+                .gte('date', dateFrom)
+                .lte('date', dateTo);
+
+            if (error) throw error;
+            return expenses || [];
+        }
+
+        // FIXED: Using payment_date instead of date
+        async function loadPayments(dateFrom, dateTo) {
+            const { data: payments, error } = await supabase
+                .from('payments')
+                .select('*')
+                .gte('payment_date', dateFrom)  // FIXED: payment_date
+                .lte('payment_date', dateTo);   // FIXED: payment_date
+
+            if (error) throw error;
+            return payments || [];
+        }
+
+        function updateOverviewStats(orders, expenses, payments) {
+            // Calculate REAL revenue from actual payments
+            const totalRevenue = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+            const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+            const netProfit = totalRevenue - totalExpenses;
+            const totalOrders = orders.length;
+            const completedOrders = orders.filter(order => order.status === 'completed' || order.status === 'delivered').length;
+            const completionRate = totalOrders > 0 ? ((completedOrders / totalOrders) * 100).toFixed(1) : 0;
+
+            // Update stats
+            document.getElementById('totalRevenue').textContent = `KSh ${totalRevenue.toLocaleString()}`;
+            document.getElementById('totalExpenses').textContent = `KSh ${totalExpenses.toLocaleString()}`;
+            document.getElementById('netProfit').textContent = `KSh ${netProfit.toLocaleString()}`;
+            document.getElementById('netProfit').style.color = netProfit >= 0 ? '#10b981' : '#ef4444';
+            document.getElementById('totalOrders').textContent = totalOrders.toLocaleString();
+            document.getElementById('completedOrders').textContent = completedOrders.toLocaleString();
+            document.getElementById('completionRate').textContent = `${completionRate}%`;
+        }
+
+        function createCharts(orders, expenses, payments) {
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => chart && chart.destroy());
+
+            // 1. Revenue vs Expenses Chart (using REAL payments)
+            const totalRevenue = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+            const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+            
+            charts.revenueExpenses = new Chart(document.getElementById('revenueExpensesChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Revenue', 'Expenses', 'Profit'],
+                    datasets: [{
+                        label: 'Amount (KSh)',
+                        data: [totalRevenue, totalExpenses, totalRevenue - totalExpenses],
+                        backgroundColor: ['#10b981', '#ef4444', '#f59e0b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: value => 'KSh ' + value.toLocaleString() }
+                        }
+                    }
+                }
+            });
+
+            // 2. Orders by Type Chart
+            const orderTypes = {};
+            orders.forEach(order => {
+                orderTypes[order.order_type] = (orderTypes[order.order_type] || 0) + 1;
+            });
+
+            charts.ordersByType = new Chart(document.getElementById('ordersByTypeChart'), {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(orderTypes).map(type => type.charAt(0).toUpperCase() + type.slice(1)),
+                    datasets: [{
+                        data: Object.values(orderTypes),
+                        backgroundColor: ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444']
+                    }]
+                },
+                options: { responsive: true }
+            });
+
+            // 3. Expenses by Category Chart
+            const expenseCategories = {};
+            expenses.forEach(expense => {
+                expenseCategories[expense.category] = (expenseCategories[expense.category] || 0) + (expense.amount || 0);
+            });
+
+            charts.expensesByCategory = new Chart(document.getElementById('expensesByCategoryChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(expenseCategories).map(cat => cat.charAt(0).toUpperCase() + cat.slice(1)),
+                    datasets: [{
+                        data: Object.values(expenseCategories),
+                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#10b981', '#ec4899']
+                    }]
+                },
+                options: { responsive: true }
+            });
+
+            // 4. Monthly Performance Chart (using payments data)
+            const monthlyData = groupPaymentsByMonth(payments);
+            charts.monthlyPerformance = new Chart(document.getElementById('monthlyPerformanceChart'), {
+                type: 'line',
+                data: {
+                    labels: Object.keys(monthlyData),
+                    datasets: [{
+                        label: 'Monthly Revenue',
+                        data: Object.values(monthlyData),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: value => 'KSh ' + value.toLocaleString() }
+                        }
+                    }
+                }
+            });
+        }
+
+        // FIXED: Using payment_date for grouping
+        function groupPaymentsByMonth(payments) {
+            return payments.reduce((acc, payment) => {
+                const date = new Date(payment.payment_date);  // FIXED: payment_date
+                const monthYear = date.toLocaleDateString('en', { month: 'short', year: 'numeric' });
+                acc[monthYear] = (acc[monthYear] || 0) + (payment.amount || 0);
+                return acc;
+            }, {});
+        }
+
+        function updateFinancialDetails(orders, expenses, payments) {
+            const totalRevenue = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+            const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+            const netProfit = totalRevenue - totalExpenses;
+            const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0;
+
+            const html = `
+                <div class="stats-grid">
+                    <div class="stat-card revenue">
+                        <div class="stat-number">KSh ${totalRevenue.toLocaleString()}</div>
+                        <div class="stat-label">Actual Revenue</div>
+                    </div>
+                    <div class="stat-card expenses">
+                        <div class="stat-number">KSh ${totalExpenses.toLocaleString()}</div>
+                        <div class="stat-label">Total Expenses</div>
+                    </div>
+                    <div class="stat-card profit">
+                        <div class="stat-number" style="color: ${netProfit >= 0 ? '#10b981' : '#ef4444'}">KSh ${netProfit.toLocaleString()}</div>
+                        <div class="stat-label">Net Profit</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" style="color: ${profitMargin >= 0 ? '#10b981' : '#ef4444'}">${profitMargin}%</div>
+                        <div class="stat-label">Profit Margin</div>
+                    </div>
+                </div>
+                <h4 style="margin: 20px 0 10px 0;">Top Revenue Sources</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order Type</th>
+                            <th>Orders Count</th>
+                            <th>Total Revenue</th>
+                            <th>Average Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${getOrderTypeRevenue(orders, payments)}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('financialDetails').innerHTML = html;
+        }
+
+        function getOrderTypeRevenue(orders, payments) {
+            const orderTypeStats = {};
+            
+            // Group payments by order type
+            payments.forEach(payment => {
+                const order = orders.find(o => o.id === payment.order_id);
+                if (order) {
+                    if (!orderTypeStats[order.order_type]) {
+                        orderTypeStats[order.order_type] = {
+                            count: 0,
+                            revenue: 0
+                        };
+                    }
+                    orderTypeStats[order.order_type].revenue += payment.amount || 0;
+                }
+            });
+
+            // Count orders by type
+            orders.forEach(order => {
+                if (!orderTypeStats[order.order_type]) {
+                    orderTypeStats[order.order_type] = { count: 0, revenue: 0 };
+                }
+                orderTypeStats[order.order_type].count++;
+            });
+
+            return Object.entries(orderTypeStats)
+                .map(([type, stats]) => `
+                    <tr>
+                        <td>${type.charAt(0).toUpperCase() + type.slice(1)}</td>
+                        <td>${stats.count}</td>
+                        <td>KSh ${stats.revenue.toLocaleString()}</td>
+                        <td>KSh ${stats.count > 0 ? (stats.revenue / stats.count).toFixed(0) : 0}</td>
+                    </tr>
+                `).join('');
+        }
+
+        function updateOrdersAnalysis(orders) {
+            const orderTypes = {};
+            const statusCount = {};
+            let totalOrderValue = 0;
+
+            orders.forEach(order => {
+                orderTypes[order.order_type] = (orderTypes[order.order_type] || 0) + 1;
+                statusCount[order.status] = (statusCount[order.status] || 0) + 1;
+                totalOrderValue += order.price || 0;
+            });
+
+            const averageOrderValue = orders.length > 0 ? totalOrderValue / orders.length : 0;
+
+            const html = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${orders.length}</div>
+                        <div class="stat-label">Total Orders</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">KSh ${averageOrderValue.toFixed(0)}</div>
+                        <div class="stat-label">Average Order Value</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${statusCount.completed || 0}</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${statusCount.pending || 0}</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                </div>
+                
+                <h4 style="margin: 20px 0 10px 0;">Orders by Type</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order Type</th>
+                            <th>Count</th>
+                            <th>Percentage</th>
+                            <th>Total Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(orderTypes).map(([type, count]) => {
+                            const typeOrders = orders.filter(o => o.order_type === type);
+                            const totalValue = typeOrders.reduce((sum, order) => sum + (order.price || 0), 0);
+                            return `
+                                <tr>
+                                    <td>${type.charAt(0).toUpperCase() + type.slice(1)}</td>
+                                    <td>${count}</td>
+                                    <td>${((count / orders.length) * 100).toFixed(1)}%</td>
+                                    <td>KSh ${totalValue.toLocaleString()}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('ordersAnalysis').innerHTML = html;
+        }
+
+        function updateExpensesAnalysis(expenses) {
+            const categoryTotals = {};
+            let totalExpenses = 0;
+
+            expenses.forEach(expense => {
+                categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + (expense.amount || 0);
+                totalExpenses += expense.amount || 0;
+            });
+
+            const html = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${expenses.length}</div>
+                        <div class="stat-label">Total Expenses</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">KSh ${totalExpenses.toLocaleString()}</div>
+                        <div class="stat-label">Total Amount</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">KSh ${(totalExpenses / (expenses.length || 1)).toFixed(0)}</div>
+                        <div class="stat-label">Average Expense</div>
+                    </div>
+                </div>
+                
+                <h4 style="margin: 20px 0 10px 0;">Expenses by Category</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Total Amount</th>
+                            <th>Percentage</th>
+                            <th>Expense Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(categoryTotals).map(([category, amount]) => {
+                            const categoryCount = expenses.filter(e => e.category === category).length;
+                            return `
+                                <tr>
+                                    <td>${category.charAt(0).toUpperCase() + category.slice(1)}</td>
+                                    <td>KSh ${amount.toLocaleString()}</td>
+                                    <td>${((amount / totalExpenses) * 100).toFixed(1)}%</td>
+                                    <td>${categoryCount}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('expensesAnalysis').innerHTML = html;
+        }
+
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + 'Tab').style.display = 'block';
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        function goBack() {
+            window.location.href = 'admin-dashboard.html';
+        }
+    </script>
+</body>
+</html>

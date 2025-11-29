@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Order Details - RM TAILORED</title>
+    <link rel="stylesheet" href="global.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/dist/umd/supabase.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f5f7fa; color: #333; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h1 { color: #228B22; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; margin: 5px; }
+        .btn-back { background: #dc143c; color: white; }
+        .btn-back:hover { background: #b01030; }
+        .btn-primary { background: #228B22; color: white; }
+        .btn-edit { background: #ffc107; color: #212529; }
+        .btn-payment { background: #17a2b8; color: white; }
+        .order-card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .order-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px; }
+        .order-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .info-group { margin-bottom: 15px; }
+        .label { font-weight: 600; color: #666; font-size: 14px; }
+        .value { font-size: 16px; margin-top: 5px; }
+        .status-badge { padding: 6px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-in_progress { background: #cce7ff; color: #004085; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-delivered { background: #d1ecf1; color: #0c5460; }
+        .timeline { margin-top: 30px; }
+        .timeline-item { display: flex; margin-bottom: 20px; }
+        .timeline-marker { width: 20px; height: 20px; border-radius: 50%; background: #228B22; margin-right: 15px; flex-shrink: 0; }
+        .timeline-content { flex: 1; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .payment-section { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .payment-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #ddd; }
+        .payment-total { background: #e7f3ff; padding: 15px; border-radius: 8px; margin-top: 15px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+        .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .action-buttons { display: flex; gap: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 ORDER DETAILS</h1>
+            <div>
+                <button class="btn btn-edit" onclick="openEditModal()"><i class="fas fa-edit"></i> EDIT ORDER</button>
+                <button class="btn btn-payment" onclick="openPaymentModal()"><i class="fas fa-money-bill-wave"></i> ADD PAYMENT</button>
+                <button class="btn btn-back" onclick="goBack()">⬅ BACK TO ORDERS</button>
+            </div>
+        </div>
+
+        <div id="orderDetails">
+            <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading order details...</div>
+        </div>
+
+        <div class="order-card">
+            <h3>💰 PAYMENT HISTORY</h3>
+            <div id="paymentHistory">
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading payments...</div>
+            </div>
+        </div>
+
+        <div class="order-card">
+            <h3>🕒 ORDER TIMELINE</h3>
+            <div id="orderTimeline" class="timeline">
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading timeline...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Order Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ EDIT ORDER</h2>
+                <button class="close-btn" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="editOrderForm">
+                <div id="editFormContent"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Payment Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💰 ADD PAYMENT</h2>
+                <button class="close-btn" onclick="closePaymentModal()">&times;</button>
+            </div>
+            <form id="addPaymentForm">
+                <div class="form-group">
+                    <label>Amount (KSh) *</label>
+                    <input type="number" id="paymentAmount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Payment Method *</label>
+                    <select id="paymentMethod" required>
+                        <option value="">Select Method</option>
+                        <option value="cash">Cash</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="pos">POS</option>
+                        <option value="mobile_money">Mobile Money</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Payment Date *</label>
+                    <input type="date" id="paymentDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Notes (Optional)</label>
+                    <textarea id="paymentNotes" placeholder="Payment reference or notes..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-back" onclick="closePaymentModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+        const supabaseUrl = 'https://jahrvqdxbdcnqnxuhewf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphaHJ2cWR4YmRjbnFueHVoZXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3MDY4ODUsImV4cCI6MjA3ODI4Mjg4NX0._Q8_o41iN2_roejx67FvOQ8DlMApPdw0L3bmWhymgNc';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let orderId = null, currentOrder = null, currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            currentUser = await validateSession();
+            orderId = new URLSearchParams(window.location.search).get('id');
+            if (!orderId) return alert('Order ID not specified');
+
+            // Check if worker can access this order
+            if (currentUser.role === 'worker') {
+                const { data: order, error } = await supabase
+                    .from('orders')
+                    .select('assigned_to')
+                    .eq('id', orderId)
+                    .single();
+                
+                if (!error && order.assigned_to !== currentUser.id) {
+                    alert('🚫 Access Denied: This order is not assigned to you');
+                    window.location.href = 'my-orders.html';
+                    return;
+                }
+            }
+
+            loadOrderDetails();
+            loadPaymentHistory();
+            loadOrderTimeline();
+        });
+
+        async function loadOrderDetails() {
+            try {
+                const { data: order, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('id', orderId)
+                    .single();
+
+                if (error) throw error;
+                currentOrder = order;
+                displayOrderDetails(order);
+            } catch (error) {
+                document.getElementById('orderDetails').innerHTML = '<p>Error loading order details</p>';
+            }
+        }
+
+        function displayOrderDetails(order) {
+            const statusClass = `status-${order.status}`;
+            const dueDate = new Date(order.due_date);
+            const isOverdue = dueDate < new Date();
+            const totalPaid = order.total_paid || 0;
+            const balance = (order.price || 0) - totalPaid;
+
+            document.getElementById('orderDetails').innerHTML = `
+                <div class="order-card">
+                    <div class="order-header">
+                        <div>
+                            <h2>Order #${order.id.slice(-6)}</h2>
+                            <p>Created: ${new Date(order.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <span class="status-badge ${statusClass}">${order.status.toUpperCase()}</span>
+                    </div>
+                    
+                    <div class="order-info">
+                        <div class="info-group">
+                            <div class="label">Customer Name</div>
+                            <div class="value">${order.customer_name}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="label">Phone Number</div>
+                            <div class="value">${order.customer_phone}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="label">Order Type</div>
+                            <div class="value">${order.order_type}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="label">Due Date</div>
+                            <div class="value ${isOverdue ? 'error' : ''}">${dueDate.toLocaleDateString()} ${isOverdue ? '⚠️ Overdue' : ''}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="label">Total Price</div>
+                            <div class="value">KSh ${order.price || 'Not set'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="label">Total Paid</div>
+                            <div class="value">KSh ${totalPaid}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="label">Balance</div>
+                            <div class="value" style="color: ${balance > 0 ? '#dc143c' : '#28a745'}">KSh ${balance} ${balance <= 0 ? '✅ Paid' : ''}</div>
+                        </div>
+                    </div>
+
+                    <div class="info-group">
+                        <div class="label">Measurements & Notes</div>
+                        <div class="value" style="white-space: pre-wrap; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;">${order.notes || 'No notes provided'}</div>
+                    </div>
+                </div>`;
+        }
+
+        async function loadPaymentHistory() {
+            try {
+                const { data: payments, error } = await supabase
+                    .from('payments')
+                    .select('*')
+                    .eq('order_id', orderId)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                let html = '';
+                if (payments && payments.length) {
+                    payments.forEach(payment => {
+                        html += `<div class="payment-item">
+                            <div>
+                                <strong>KSh ${payment.amount}</strong>
+                                <div style="font-size: 14px; color: #666;">
+                                    ${payment.method} • ${new Date(payment.payment_date).toLocaleDateString()} <!-- Changed to payment_date -->
+                                    ${payment.notes ? `<br>${payment.notes}` : ''}
+                                </div>
+                            </div>
+                            <div style="font-size: 12px; color: #999;">
+                                ${new Date(payment.created_at).toLocaleDateString()}
+                            </div>
+                        </div>`;
+                    });
+                    
+                    const totalPaid = payments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+                    html += `<div class="payment-total">
+                        <strong>Total Paid: KSh ${totalPaid.toFixed(2)}</strong>
+                        ${currentOrder ? `<br>Balance: KSh ${((currentOrder.price || 0) - totalPaid).toFixed(2)}` : ''}
+                    </div>`;
+                } else {
+                    html = '<p>No payments recorded yet.</p>';
+                }
+                document.getElementById('paymentHistory').innerHTML = html;
+            } catch (error) {
+                document.getElementById('paymentHistory').innerHTML = '<p>Error loading payments</p>';
+            }
+        }
+
+        async function loadOrderTimeline() {
+            try {
+                const { data: logs, error } = await supabase
+                    .from('order_logs')
+                    .select('*')
+                    .eq('order_id', orderId)
+                    .order('created_at', { ascending: true });
+
+                if (error) throw error;
+
+                let html = '';
+                if (logs && logs.length) {
+                    logs.forEach(log => {
+                        const date = new Date(log.created_at);
+                        html += `<div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <strong>${formatLogAction(log.action)}</strong>
+                                <p>${log.old_status ? `Status changed from ${log.old_status} to ${log.new_status}` : 'Order created'}</p>
+                                <small>${date.toLocaleString()}</small>
+                            </div>
+                        </div>`;
+                    });
+                } else {
+                    html = '<p>No activity recorded for this order yet.</p>';
+                }
+                document.getElementById('orderTimeline').innerHTML = html;
+            } catch (error) {
+                document.getElementById('orderTimeline').innerHTML = '<p>Error loading timeline</p>';
+            }
+        }
+
+        function openEditModal() {
+            if (!currentOrder) return;
+            
+            const html = `
+                <div class="form-group">
+                    <label>Customer Name *</label>
+                    <input type="text" id="editCustomerName" value="${currentOrder.customer_name}" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number *</label>
+                    <input type="tel" id="editCustomerPhone" value="${currentOrder.customer_phone}" required>
+                </div>
+                <div class="form-group">
+                    <label>Order Type *</label>
+                    <select id="editOrderType" required>
+                        <option value="shirt" ${currentOrder.order_type === 'shirt' ? 'selected' : ''}>Shirt</option>
+                        <option value="trouser" ${currentOrder.order_type === 'trouser' ? 'selected' : ''}>Trouser</option>
+                        <option value="suit" ${currentOrder.order_type === 'suit' ? 'selected' : ''}>Suit</option>
+                        <option value="dress" ${currentOrder.order_type === 'dress' ? 'selected' : ''}>Dress</option>
+                        <option value="alteration" ${currentOrder.order_type === 'alteration' ? 'selected' : ''}>Alteration</option>
+                        <option value="other" ${currentOrder.order_type === 'other' ? 'selected' : ''}>Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Due Date *</label>
+                    <input type="date" id="editDueDate" value="${currentOrder.due_date}" required>
+                </div>
+                <div class="form-group">
+                    <label>Price (KSh)</label>
+                    <input type="number" id="editPrice" value="${currentOrder.price || ''}" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Deposit (KSh)</label>
+                    <input type="number" id="editDeposit" value="${currentOrder.deposit || ''}" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Measurements & Notes</label>
+                    <textarea id="editNotes" rows="4">${currentOrder.notes || ''}</textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-back" onclick="closeEditModal()">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveOrderEdit()">Save Changes</button>
+                </div>`;
+            
+            document.getElementById('editFormContent').innerHTML = html;
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        async function saveOrderEdit() {
+            try {
+                const updateData = {
+                    customer_name: document.getElementById('editCustomerName').value.trim(),
+                    customer_phone: document.getElementById('editCustomerPhone').value.trim(),
+                    order_type: document.getElementById('editOrderType').value,
+                    due_date: document.getElementById('editDueDate').value,
+                    price: document.getElementById('editPrice').value ? parseFloat(document.getElementById('editPrice').value) : null,
+                    deposit: document.getElementById('editDeposit').value ? parseFloat(document.getElementById('editDeposit').value) : null,
+                    notes: document.getElementById('editNotes').value.trim()
+                };
+
+                const { error } = await supabase
+                    .from('orders')
+                    .update(updateData)
+                    .eq('id', orderId);
+
+                if (error) throw error;
+
+                // Log the edit
+                await supabase.from('order_logs').insert({
+                    order_id: orderId,
+                    action: 'order_updated',
+                    changed_by: (await getCurrentUser()).id
+                });
+
+                alert('Order updated successfully!');
+                closeEditModal();
+                await loadOrderDetails();
+            } catch (error) {
+                alert('Error updating order: ' + error.message);
+            }
+        }
+
+        function openPaymentModal() {
+            document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('paymentModal').style.display = 'flex';
+        }
+
+        document.getElementById('addPaymentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const amount = parseFloat(document.getElementById('paymentAmount').value);
+            const method = document.getElementById('paymentMethod').value;
+            const paymentDate = document.getElementById('paymentDate').value; // Changed variable name
+            const notes = document.getElementById('paymentNotes').value.trim();
+
+            try {
+                const { error } = await supabase
+                    .from('payments')
+                    .insert([{ 
+                        order_id: orderId,
+                        amount: amount,
+                        method: method,
+                        payment_date: paymentDate, // Changed to match column name
+                        notes: notes || null,
+                        created_by: (await getCurrentUser()).id
+                    }] );
+
+                if (error) throw error;
+
+                alert('Payment recorded successfully!');
+                closePaymentModal();
+                await loadPaymentHistory();
+                await loadOrderDetails();
+                // After payment success
+                await createNotification(
+                    currentUser.id,
+                    'payment',
+                    '💰 Payment Received',
+                    `Payment of KSh ${amount} recorded for Order #${orderId.slice(-6)}`,
+                    orderId
+                );
+                showNotification('Payment Recorded', `KSh ${amount} payment added successfully`, 'success');
+            } catch (error) {
+                alert('Error recording payment: ' + error.message);
+            }
+        });
+
+        function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
+        function closePaymentModal() { document.getElementById('paymentModal').style.display = 'none'; }
+
+        function formatLogAction(action) {
+            const actions = {
+                'status_update': 'Status Updated',
+                'order_created': 'Order Created',
+                'order_updated': 'Order Updated',
+                'payment_added': 'Payment Added'
+            };
+            return actions[action] || action;
+        }
+
+        function goBack() { window.location.href = 'all-orders.html'; }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            if (event.target === document.getElementById('editModal')) closeEditModal();
+            if (event.target === document.getElementById('paymentModal')) closePaymentModal();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Workers - RM TAILORED</title>
+    <link rel="stylesheet" href="global.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/dist/umd/supabase.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+            --accent-gradient: linear-gradient(135deg, #ffd700 0%, #ffecb3 100%);
+            --danger-gradient: linear-gradient(135deg, #dc143c 0%, #b01030 100%);
+            --success-gradient: linear-gradient(135deg, #28a745 0%, #218838 100%);
+            --info-gradient: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            --warning-gradient: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+        }
+
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+        }
+
+        body { 
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: #1e293b; 
+            min-height: 100vh; 
+        }
+
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            padding: 0;
+        }
+
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 30px 40px 20px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .header h1 { 
+            font-size: 2.4rem;
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            letter-spacing: -0.02em;
+        }
+
+        .header-actions { 
+            display: flex; 
+            gap: 16px; 
+        }
+
+        .btn { 
+            padding: 14px 28px; 
+            border: none; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            font-weight: 700; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            font-size: 15px;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary { 
+            background: var(--primary-gradient);
+            color: white; 
+        }
+
+        .btn-primary:hover { 
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(26, 35, 126, 0.3);
+        }
+
+        .btn-back { 
+            background: var(--danger-gradient);
+            color: white; 
+        }
+
+        .btn-back:hover { 
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(220, 20, 60, 0.3);
+        }
+
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+            gap: 24px; 
+            padding: 30px 40px;
+            background: white;
+        }
+
+        .stat-card { 
+            background: white; 
+            padding: 28px; 
+            border-radius: 16px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            text-align: center; 
+            border-left: 4px solid #1a237e;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary-gradient);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+
+        .stat-number { 
+            font-size: 2.8rem; 
+            font-weight: 800; 
+            color: #1a237e; 
+            margin-bottom: 8px; 
+            line-height: 1;
+        }
+
+        .stat-label { 
+            color: #64748b; 
+            font-size: 14px; 
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .bulk-actions { 
+            background: linear-gradient(135deg, #e7f3ff 0%, #dbeafe 100%);
+            padding: 20px 40px; 
+            border-radius: 0;
+            display: flex; 
+            gap: 16px; 
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .bulk-actions strong {
+            color: #1a237e;
+            font-size: 16px;
+        }
+
+        .controls { 
+            background: white; 
+            padding: 30px 40px; 
+            border-radius: 0;
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 20px; 
+            align-items: center;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .search-box { 
+            flex: 1; 
+            min-width: 300px; 
+            position: relative; 
+        }
+
+        .search-box input { 
+            width: 100%; 
+            padding: 16px 20px 16px 52px; 
+            border: 2px solid #e2e8f0; 
+            border-radius: 12px; 
+            font-size: 16px; 
+            transition: all 0.3s ease;
+            background: #f8fafc;
+            font-weight: 500;
+        }
+
+        .search-box input:focus {
+            border-color: #1a237e;
+            box-shadow: 0 0 0 4px rgba(26, 35, 126, 0.1);
+            transform: translateY(-2px);
+            background: white;
+        }
+
+        .search-box i { 
+            position: absolute; 
+            left: 20px; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            color: #64748b; 
+            z-index: 2;
+            font-size: 18px;
+        }
+
+        .filter-select { 
+            padding: 16px 20px; 
+            border: 2px solid #e2e8f0; 
+            border-radius: 12px; 
+            background: #f8fafc; 
+            font-size: 16px; 
+            min-width: 180px; 
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-weight: 500;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%2364748b' d='M2 0L0 2h4zm0 5L0 3h4z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 12px;
+        }
+
+        .filter-select:focus {
+            border-color: #1a237e;
+            box-shadow: 0 0 0 4px rgba(26, 35, 126, 0.1);
+            transform: translateY(-2px);
+            background: white;
+        }
+
+        .workers-container {
+            padding: 0 40px 40px;
+            background: white;
+        }
+
+        .workers-list { 
+            background: white; 
+            border-radius: 16px; 
+            box-shadow: 0 4px 25px rgba(0,0,0,0.08);
+            overflow: hidden;
+            border: 1px solid #f1f5f9;
+        }
+
+        .worker-item { 
+            padding: 28px; 
+            border-bottom: 1px solid #f1f5f9; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            background: white;
+        }
+
+        .worker-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 4px;
+            background: var(--primary-gradient);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .worker-item:hover::before {
+            opacity: 1;
+        }
+
+        .worker-item:hover { 
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            transform: translateX(8px);
+        }
+
+        .worker-item:last-child { 
+            border-bottom: none; 
+        }
+
+        .worker-info { 
+            flex: 1; 
+        }
+
+        .worker-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .worker-name { 
+            font-size: 20px; 
+            font-weight: 700; 
+            color: #1a237e; 
+            margin-bottom: 0;
+        }
+
+        .worker-role { 
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px; 
+            border-radius: 20px; 
+            font-size: 12px; 
+            font-weight: 700; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .role-admin { 
+            background: var(--accent-gradient);
+            color: #1a237e;
+            border: 1px solid #ffd700;
+        }
+
+        .role-worker { 
+            background: var(--success-gradient);
+            color: white;
+            border: 1px solid #28a745;
+        }
+
+        .worker-details { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 20px; 
+            color: #64748b; 
+            font-size: 14px; 
+            margin-bottom: 16px;
+        }
+
+        .worker-detail { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            font-weight: 500;
+        }
+
+        .worker-stats { 
+            display: flex; 
+            gap: 16px; 
+            margin-top: 16px;
+        }
+
+        .stat { 
+            background: #f8fafc; 
+            padding: 8px 16px; 
+            border-radius: 10px; 
+            font-size: 12px; 
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .stat:hover {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+        }
+
+        .worker-actions { 
+            display: flex; 
+            gap: 12px; 
+        }
+
+        .action-btn { 
+            padding: 10px 18px; 
+            border: none; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            font-size: 12px; 
+            font-weight: 700; 
+            transition: all 0.3s ease; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .action-btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-view { 
+            background: var(--info-gradient);
+            color: white; 
+        }
+
+        .btn-view:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(23, 162, 184, 0.3);
+        }
+
+        .btn-assign { 
+            background: var(--success-gradient);
+            color: white; 
+        }
+
+        .btn-assign:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-edit { 
+            background: var(--warning-gradient);
+            color: #1a237e; 
+        }
+
+        .btn-edit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 193, 7, 0.3);
+        }
+
+        .btn-delete { 
+            background: var(--danger-gradient);
+            color: white; 
+        }
+
+        .btn-delete:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(220, 53, 69, 0.3);
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            accent-color: #1a237e;
+        }
+
+        .checkbox:checked {
+            background-color: #1a237e;
+            border-color: #1a237e;
+        }
+
+        /* Enhanced Modal Styles */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.6); 
+            backdrop-filter: blur(12px);
+            z-index: 1000; 
+            justify-content: center; 
+            align-items: center; 
+            animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 20px;
+        }
+
+        .modal-content { 
+            background: white; 
+            padding: 40px; 
+            border-radius: 20px; 
+            width: 90%; 
+            max-width: 520px; 
+            max-height: 90vh; 
+            overflow-y: auto; 
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            animation: slideUpModal 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, #1a237e, #ffd700);
+        }
+
+        .modal-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 30px; 
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .modal-header h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .close-btn { 
+            background: none; 
+            border: none; 
+            font-size: 28px; 
+            cursor: pointer; 
+            color: #64748b;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .close-btn:hover {
+            background: rgba(220, 20, 60, 0.1);
+            color: #dc143c;
+            transform: rotate(90deg) scale(1.1);
+        }
+
+        .form-group { 
+            margin-bottom: 24px; 
+        }
+
+        .form-group label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 600; 
+            color: #1a237e;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input, .form-group select, .form-group textarea { 
+            width: 100%; 
+            padding: 16px; 
+            border: 2px solid #e2e8f0; 
+            border-radius: 12px; 
+            font-size: 16px; 
+            transition: all 0.3s ease;
+            background: white;
+            font-weight: 500;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #1a237e;
+            box-shadow: 0 0 0 4px rgba(26, 35, 126, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .form-actions { 
+            display: flex; 
+            gap: 12px; 
+            justify-content: flex-end; 
+            margin-top: 30px; 
+        }
+
+        .loading { 
+            text-align: center; 
+            padding: 60px 40px; 
+            color: #64748b; 
+            font-size: 18px;
+        }
+
+        .empty-state { 
+            text-align: center; 
+            padding: 80px 40px; 
+            color: #94a3b8;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            color: #64748b;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .empty-state p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            margin-bottom: 24px;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUpModal {
+            from { 
+                transform: translateY(30px) scale(0.95);
+                opacity: 0;
+            }
+            to { 
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+
+            .header-actions {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+            }
+
+            .header, .stats-grid, .bulk-actions, .controls, .workers-container {
+                padding: 20px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .search-box, .filter-select {
+                min-width: 100%;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .worker-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 20px;
+            }
+
+            .worker-actions {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .worker-stats {
+                flex-wrap: wrap;
+            }
+
+            .modal-content {
+                padding: 30px 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .stat-number {
+                font-size: 2.2rem;
+            }
+
+            .action-btn {
+                padding: 8px 12px;
+                font-size: 0.7rem;
+            }
+
+            .worker-details {
+                flex-direction: column;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-users-cog"></i> MANAGE WORKFORCE</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="openAddWorkerModal()">
+                    <i class="fas fa-user-plus"></i> ADD TEAM MEMBER
+                </button>
+                <button class="btn btn-back" onclick="goBack()">
+                    <i class="fas fa-arrow-left"></i> DASHBOARD
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalWorkers">0</div>
+                <div class="stat-label">Total Team Members</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeWorkers">0</div>
+                <div class="stat-label">Active Members</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="adminCount">0</div>
+                <div class="stat-label">Administrators</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="workerCount">0</div>
+                <div class="stat-label">Master Tailors</div>
+            </div>
+        </div>
+
+        <div class="bulk-actions" id="bulkActions" style="display: none;">
+            <strong id="selectedCount">0</strong> team members selected
+            <button class="btn btn-secondary" onclick="bulkAssignWork()">
+                <i class="fas fa-tasks"></i> Assign Work
+            </button>
+            <button class="btn btn-secondary" onclick="bulkUpdateStatus()">
+                <i class="fas fa-toggle-on"></i> Update Status
+            </button>
+            <button class="btn btn-secondary" onclick="clearSelection()">
+                <i class="fas fa-times"></i> Clear Selection
+            </button>
+        </div>
+
+        <div class="controls">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search team members by name or email..." onkeyup="filterWorkers()">
+            </div>
+            <select class="filter-select" id="roleFilter" onchange="filterWorkers()">
+                <option value="all">All Roles</option>
+                <option value="admin">Administrators</option>
+                <option value="worker">Master Tailors</option>
+            </select>
+            <select class="filter-select" id="statusFilter" onchange="filterWorkers()">
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+
+        <div class="workers-container">
+            <div class="workers-list" id="workersList">
+                <div class="loading">
+                    <div class="spinner" style="margin: 0 auto 20px;"></div>
+                    <p>Loading team members...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Worker Modal -->
+    <div id="addWorkerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-plus"></i> ADD TEAM MEMBER</h2>
+                <button class="close-btn" onclick="closeAddWorkerModal()">&times;</button>
+            </div>
+            <form id="addWorkerForm">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="newFullName" placeholder="Enter full name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email Address *</label>
+                    <input type="email" id="newEmail" placeholder="Enter email address" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="newPhone" placeholder="Enter phone number">
+                </div>
+                <div class="form-group">
+                    <label>Role *</label>
+                    <select id="newRole" required>
+                        <option value="">Select Role</option>
+                        <option value="admin">👑 Administrator</option>
+                        <option value="worker">👨‍💼 Master Tailor</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Specialization</label>
+                    <select id="newSpecialization">
+                        <option value="">Select Specialization</option>
+                        <option value="suits">👔 Suits & Blazers</option>
+                        <option value="shirts">👕 Shirts</option>
+                        <option value="trousers">👖 Trousers</option>
+                        <option value="dresses">👗 Dresses</option>
+                        <option value="alterations">📏 Alterations</option>
+                        <option value="general">🎯 General Tailoring</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Password *</label>
+                    <input type="password" id="newPassword" placeholder="Create secure password" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddWorkerModal()">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i> Add Member
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Worker Modal -->
+    <div id="editWorkerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-edit"></i> EDIT TEAM MEMBER</h2>
+                <button class="close-btn" onclick="closeEditWorkerModal()">&times;</button>
+            </div>
+            <form id="editWorkerForm">
+                <div id="editFormContent"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Assign Work Modal -->
+    <div id="assignWorkModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-tasks"></i> ASSIGN WORK</h2>
+                <button class="close-btn" onclick="closeAssignWorkModal()">&times;</button>
+            </div>
+            <div id="assignWorkContent"></div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+        const supabaseUrl = 'https://jahrvqdxbdcnqnxuhewf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphaHJ2cWR4YmRjbnFueHVoZXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3MDY4ODUsImV4cCI6MjA3ODI4Mjg4NX0._Q8_o41iN2_roejx67FvOQ8DlMApPdw0L3bmWhymgNc';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let currentUser = null, allWorkers = [], workerOrders = {}, selectedWorkers = new Set();
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            try { 
+                currentUser = await validateSession('admin'); 
+                await loadWorkers(); 
+                await loadWorkerStats(); 
+            } catch (error) { 
+                console.error("Access denied:", error);
+                window.location.href = 'index.html';
+            }
+        });
+
+        async function loadWorkers() {
+            try {
+                const { data: workers, error } = await supabase
+                    .from('workers')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                allWorkers = workers || []; 
+                await loadWorkerOrderCounts(); 
+                displayWorkers(allWorkers);
+            } catch (error) {
+                document.getElementById('workersList').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Error Loading Team</h3>
+                        <p>Unable to load team members. Please try again.</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadWorkerOrderCounts() {
+            try {
+                const { data: orders, error } = await supabase
+                    .from('orders')
+                    .select('id, created_by, status, assigned_to');
+
+                if (error) throw error;
+                
+                workerOrders = {};
+                orders.forEach(order => {
+                    const workerId = order.assigned_to || order.created_by;
+                    if (workerId) {
+                        if (!workerOrders[workerId]) {
+                            workerOrders[workerId] = { total: 0, pending: 0, completed: 0, in_progress: 0 };
+                        }
+                        workerOrders[workerId].total++;
+                        if (order.status === 'pending') workerOrders[workerId].pending++;
+                        if (order.status === 'completed') workerOrders[workerId].completed++;
+                        if (order.status === 'in_progress') workerOrders[workerId].in_progress++;
+                    }
+                });
+            } catch (error) { 
+                console.error("Error loading order counts:", error); 
+            }
+        }
+
+        function displayWorkers(workers) {
+            const container = document.getElementById('workersList');
+            if (!workers.length) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-users"></i>
+                        <h3>No Team Members Found</h3>
+                        <p>Get started by adding your first team member</p>
+                        <button class="btn btn-primary" onclick="openAddWorkerModal()">
+                            <i class="fas fa-user-plus"></i> ADD FIRST MEMBER
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            workers.forEach(worker => {
+                const orders = workerOrders[worker.id] || { total: 0, pending: 0, completed: 0, in_progress: 0 };
+                const status = worker.status || 'active';
+                const statusColor = status === 'active' ? '#28a745' : '#dc3545';
+                const statusIcon = status === 'active' ? 'fa-circle-check' : 'fa-circle-pause';
+
+                html += `
+                <div class="worker-item">
+                    <div class="worker-info">
+                        <div class="worker-header">
+                            <input type="checkbox" class="checkbox" onchange="toggleWorkerSelection('${worker.id}', this.checked)">
+                            <span class="worker-name">${worker.full_name || worker.email}</span>
+                            <span class="worker-role ${worker.role === 'admin' ? 'role-admin' : 'role-worker'}">
+                                ${worker.role === 'admin' ? '👑 ADMIN' : '👨‍💼 TAILOR'}
+                            </span>
+                        </div>
+                        <div class="worker-details">
+                            <div class="worker-detail">
+                                <i class="fas fa-envelope"></i> ${worker.email}
+                            </div>
+                            ${worker.phone ? `
+                            <div class="worker-detail">
+                                <i class="fas fa-phone"></i> ${worker.phone}
+                            </div>` : ''}
+                            ${worker.specialization ? `
+                            <div class="worker-detail">
+                                <i class="fas fa-tag"></i> ${worker.specialization}
+                            </div>` : ''}
+                            <div class="worker-detail">
+                                <i class="fas ${statusIcon}" style="color: ${statusColor}"></i> 
+                                ${status === 'active' ? 'Active' : 'Inactive'}
+                            </div>
+                        </div>
+                        <div class="worker-stats">
+                            <div class="stat">
+                                <i class="fas fa-clipboard-list"></i> Total: ${orders.total}
+                            </div>
+                            <div class="stat">
+                                <i class="fas fa-clock"></i> Pending: ${orders.pending}
+                            </div>
+                            <div class="stat">
+                                <i class="fas fa-spinner"></i> In Progress: ${orders.in_progress}
+                            </div>
+                            <div class="stat">
+                                <i class="fas fa-check-circle"></i> Completed: ${orders.completed}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="worker-actions">
+                        <button class="action-btn btn-view" onclick="viewWorkerWork('${worker.id}')">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                        <button class="action-btn btn-assign" onclick="assignWorkToWorker('${worker.id}')">
+                            <i class="fas fa-tasks"></i> Assign
+                        </button>
+                        <button class="action-btn btn-edit" onclick="editWorker('${worker.id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="action-btn btn-delete" onclick="deleteWorker('${worker.id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function toggleWorkerSelection(workerId, isSelected) {
+            if (isSelected) {
+                selectedWorkers.add(workerId);
+            } else {
+                selectedWorkers.delete(workerId);
+            }
+            document.getElementById('selectedCount').textContent = selectedWorkers.size;
+            document.getElementById('bulkActions').style.display = selectedWorkers.size > 0 ? 'flex' : 'none';
+        }
+
+        function clearSelection() { 
+            selectedWorkers.clear(); 
+            document.querySelectorAll('.checkbox').forEach(cb => cb.checked = false); 
+            document.getElementById('bulkActions').style.display = 'none'; 
+        }
+
+        async function bulkAssignWork() {
+            if (selectedWorkers.size === 0) {
+                alert('Please select team members first');
+                return;
+            }
+            const workerNames = Array.from(selectedWorkers).map(id => {
+                const worker = allWorkers.find(w => w.id === id);
+                return worker?.full_name || worker?.email;
+            }).join(', ');
+            
+            alert(`Bulk assign work to: ${workerNames}\n\nThis would open the bulk assignment interface in a complete implementation.`);
+        }
+
+        async function bulkUpdateStatus() {
+            if (selectedWorkers.size === 0) {
+                alert('Please select team members first');
+                return;
+            }
+            
+            const newStatus = prompt('Enter new status (active/inactive):', 'active');
+            if (newStatus && ['active','inactive'].includes(newStatus)) {
+                try {
+                    const { error } = await supabase
+                        .from('workers')
+                        .update({ status: newStatus })
+                        .in('id', Array.from(selectedWorkers));
+
+                    if (error) throw error;
+                    
+                    alert('Status updated successfully!'); 
+                    clearSelection(); 
+                    await loadWorkers();
+                } catch (error) { 
+                    alert('Error updating status: ' + error.message); 
+                }
+            }
+        }
+
+        function filterWorkers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const roleFilter = document.getElementById('roleFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            const filteredWorkers = allWorkers.filter(worker => {
+                const matchesSearch = (worker.full_name && worker.full_name.toLowerCase().includes(searchTerm)) || 
+                                   worker.email.toLowerCase().includes(searchTerm);
+                const matchesRole = roleFilter === 'all' || worker.role === roleFilter;
+                const matchesStatus = statusFilter === 'all' || (worker.status || 'active') === statusFilter;
+                
+                return matchesSearch && matchesRole && matchesStatus;
+            });
+            
+            displayWorkers(filteredWorkers);
+        }
+
+        async function loadWorkerStats() {
+            document.getElementById('totalWorkers').textContent = allWorkers.length;
+            document.getElementById('activeWorkers').textContent = allWorkers.filter(w => (w.status || 'active') === 'active').length;
+            document.getElementById('adminCount').textContent = allWorkers.filter(w => w.role === 'admin').length;
+            document.getElementById('workerCount').textContent = allWorkers.filter(w => w.role === 'worker').length;
+        }
+
+        function openAddWorkerModal() { 
+            document.getElementById('addWorkerModal').style.display = 'flex'; 
+            document.getElementById('addWorkerForm').reset(); 
+        }
+
+        function closeAddWorkerModal() { 
+            document.getElementById('addWorkerModal').style.display = 'none'; 
+        }
+
+        function openEditWorkerModal() { 
+            document.getElementById('editWorkerModal').style.display = 'flex'; 
+        }
+
+        function closeEditWorkerModal() { 
+            document.getElementById('editWorkerModal').style.display = 'none'; 
+        }
+
+        function openAssignWorkModal() { 
+            document.getElementById('assignWorkModal').style.display = 'flex'; 
+        }
+
+        function closeAssignWorkModal() { 
+            document.getElementById('assignWorkModal').style.display = 'none'; 
+        }
+
+        document.getElementById('addWorkerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fullName = document.getElementById('newFullName').value.trim();
+            const email = document.getElementById('newEmail').value.trim();
+            const phone = document.getElementById('newPhone').value.trim();
+            const role = document.getElementById('newRole').value;
+            const specialization = document.getElementById('newSpecialization').value;
+            const password = document.getElementById('newPassword').value;
+
+            if (!fullName || !email || !role || !password) {
+                alert('Please fill all required fields!');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase
+                    .from('workers')
+                    .insert([{ 
+                        full_name: fullName, 
+                        email, 
+                        phone, 
+                        role, 
+                        specialization, 
+                        password, 
+                        status: 'active' 
+                    }])
+                    .select();
+
+                if (error) throw error;
+                
+                alert('Team member added successfully!'); 
+                closeAddWorkerModal(); 
+                await loadWorkers(); 
+                await loadWorkerStats();
+            } catch (error) { 
+                alert('Error adding team member: ' + error.message); 
+            }
+        });
+
+        async function viewWorkerWork(workerId) { 
+            window.location.href = `worker-details.html?id=${workerId}`; 
+        }
+
+        async function assignWorkToWorker(workerId) {
+            const worker = allWorkers.find(w => w.id === workerId);
+            
+            try {
+                const { data: orders, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('assigned_to', null)
+                    .eq('status', 'pending');
+
+                if (error) throw error;
+
+                let html = `<p>Assign work to: <strong>${worker.full_name || worker.email}</strong></p>`;
+                
+                if (orders.length) {
+                    html += `
+                    <div class="form-group">
+                        <label>Select Order to Assign</label>
+                        <select id="orderSelect" class="filter-select">
+                            ${orders.map(order => 
+                                `<option value="${order.id}">
+                                    Order #${order.id.slice(-6)} - ${order.customer_name} (${order.order_type})
+                                </option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeAssignWorkModal()">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="confirmAssignWork('${workerId}')">
+                            <i class="fas fa-check"></i> Assign Order
+                        </button>
+                    </div>`;
+                } else {
+                    html += `
+                    <div class="empty-state" style="padding: 20px 0;">
+                        <i class="fas fa-clipboard-list"></i>
+                        <p>No pending orders available for assignment.</p>
+                    </div>`;
+                }
+                
+                document.getElementById('assignWorkContent').innerHTML = html;
+                openAssignWorkModal();
+            } catch (error) { 
+                alert('Error loading orders: ' + error.message); 
+            }
+        }
+
+        async function confirmAssignWork(workerId) {
+            const orderId = document.getElementById('orderSelect').value;
+            if (!orderId) {
+                alert('Please select an order to assign');
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('orders')
+                    .update({ assigned_to: workerId })
+                    .eq('id', orderId);
+
+                if (error) throw error;
+
+                // Enhanced notification system
+                const { data: orderData, error: orderErr } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('id', orderId)
+                    .single();
+
+                const worker = allWorkers.find(w => w.id === workerId) || { full_name: 'Team Member' };
+
+                if (!orderErr && orderData) {
+                    const customerName = orderData.customer_name || 'customer';
+
+                    // Notify admin about assignment
+                    try {
+                        const admin = currentUser || await validateSession('admin');
+                        if (admin && admin.id) {
+                            await createNotification(
+                                admin.id,
+                                'assignment',
+                                '🧾 Work Assignment',
+                                `Order for ${customerName} assigned to ${worker.full_name || worker.email}`,
+                                orderId
+                            );
+                        }
+                    } catch (e) { 
+                        console.error('Failed to create admin notification:', e); 
+                    }
+
+                    // Notify worker about new assignment
+                    try {
+                        await createNotification(
+                            workerId,
+                            'assignment',
+                            '📌 New Assignment',
+                            `You have been assigned: Order for ${customerName}`,
+                            orderId
+                        );
+                    } catch (e) { 
+                        console.error('Failed to create worker notification:', e); 
+                    }
+                }
+
+                alert('Work assigned successfully!'); 
+                closeAssignWorkModal(); 
+                await loadWorkerOrderCounts(); 
+                displayWorkers(allWorkers);
+            } catch (error) { 
+                alert('Error assigning work: ' + error.message); 
+            }
+        }
+
+        async function editWorker(workerId) {
+            const worker = allWorkers.find(w => w.id === workerId);
+            
+            const html = `
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="editFullName" value="${worker.full_name || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="editEmail" value="${worker.email}" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="editPhone" value="${worker.phone || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="editRole" required>
+                        <option value="admin" ${worker.role === 'admin' ? 'selected' : ''}>👑 Administrator</option>
+                        <option value="worker" ${worker.role === 'worker' ? 'selected' : ''}>👨‍💼 Master Tailor</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Specialization</label>
+                    <select id="editSpecialization">
+                        <option value="">Select Specialization</option>
+                        <option value="suits" ${worker.specialization === 'suits' ? 'selected' : ''}>👔 Suits & Blazers</option>
+                        <option value="shirts" ${worker.specialization === 'shirts' ? 'selected' : ''}>👕 Shirts</option>
+                        <option value="trousers" ${worker.specialization === 'trousers' ? 'selected' : ''}>👖 Trousers</option>
+                        <option value="dresses" ${worker.specialization === 'dresses' ? 'selected' : ''}>👗 Dresses</option>
+                        <option value="alterations" ${worker.specialization === 'alterations' ? 'selected' : ''}>📏 Alterations</option>
+                        <option value="general" ${worker.specialization === 'general' ? 'selected' : ''}>🎯 General Tailoring</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="editStatus">
+                        <option value="active" ${(worker.status || 'active') === 'active' ? 'selected' : ''}>Active</option>
+                        <option value="inactive" ${worker.status === 'inactive' ? 'selected' : ''}>Inactive</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>New Password (leave blank to keep current)</label>
+                    <input type="password" id="editPassword" placeholder="Enter new password">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditWorkerModal()">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="saveWorkerEdit('${workerId}')">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>`;
+
+            document.getElementById('editFormContent').innerHTML = html;
+            openEditWorkerModal();
+        }
+
+        async function saveWorkerEdit(workerId) {
+            const fullName = document.getElementById('editFullName').value.trim();
+            const email = document.getElementById('editEmail').value.trim();
+            const phone = document.getElementById('editPhone').value.trim();
+            const role = document.getElementById('editRole').value;
+            const specialization = document.getElementById('editSpecialization').value;
+            const status = document.getElementById('editStatus').value;
+            const password = document.getElementById('editPassword').value;
+
+            try {
+                const updateData = { 
+                    full_name: fullName, 
+                    email, 
+                    phone, 
+                    role, 
+                    specialization, 
+                    status 
+                };
+                
+                if (password) {
+                    updateData.password = password;
+                }
+
+                const { error } = await supabase
+                    .from('workers')
+                    .update(updateData)
+                    .eq('id', workerId);
+
+                if (error) throw error;
+                
+                alert('Team member updated successfully!'); 
+                closeEditWorkerModal(); 
+                await loadWorkers();
+            } catch (error) { 
+                alert('Error updating team member: ' + error.message); 
+            }
+        }
+
+        async function deleteWorker(workerId) {
+            const worker = allWorkers.find(w => w.id === workerId);
+            
+            if (!confirm(`Are you sure you want to delete ${worker.full_name || worker.email}? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('workers')
+                    .delete()
+                    .eq('id', workerId);
+
+                if (error) throw error;
+                
+                alert('Team member deleted successfully!'); 
+                await loadWorkers(); 
+                await loadWorkerStats();
+            } catch (error) { 
+                alert('Error deleting team member: ' + error.message); 
+            }
+        }
+
+        function goBack() { 
+            window.location.href = 'admin-dashboard.html'; 
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            if (event.target === document.getElementById('addWorkerModal')) closeAddWorkerModal();
+            if (event.target === document.getElementById('editWorkerModal')) closeEditWorkerModal();
+            if (event.target === document.getElementById('assignWorkModal')) closeAssignWorkModal();
+        }
+
+        // Helper function for notifications (placeholder)
+        async function createNotification(userId, type, title, message, relatedId) {
+            // This would be implemented in your notifications system
+            console.log(`Creating notification for user ${userId}: ${title} - ${message}`);
+        }
+    </script>
+</body>
+</html>

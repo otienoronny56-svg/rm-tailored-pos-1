@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Notifications - RM TAILORED</title>
+    <link rel="stylesheet" href="global.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/dist/umd/supabase.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f5f7fa; color: #333; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #e1e5eb; }
+        .header h1 { color: #1E3A8A; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; }
+        .btn-back { background: #dc143c; color: white; }
+        .btn-back:hover { background: #b01030; }
+        .btn-primary { background: #1E3A8A; color: white; }
+        .notifications-list { background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        .notification-item { padding: 20px; border-bottom: 1px solid #e1e5eb; transition: background 0.3s ease; cursor: pointer; }
+        .notification-item:hover { background: #f8f9fa; }
+        .notification-item:last-child { border-bottom: none; }
+        .notification-item.unread { background: #f8fbff; }
+        .notification-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; }
+        .notification-title { font-weight: 600; font-size: 16px; color: #333; }
+        .notification-message { color: #666; line-height: 1.5; margin-bottom: 8px; }
+        .notification-meta { display: flex; justify-content: space-between; align-items: center; }
+        .notification-time { color: #999; font-size: 12px; }
+        .notification-badge { background: #dc143c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
+        .notification-actions { display: flex; gap: 10px; margin-top: 10px; }
+        .action-btn { padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; }
+        .btn-mark-read { background: #28a745; color: white; }
+        .empty-state { text-align: center; padding: 60px 20px; color: #666; }
+        .empty-state i { font-size: 64px; margin-bottom: 20px; color: #ddd; }
+        .filters { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 15px; }
+        .filter-select { padding: 10px 15px; border: 1px solid #ddd; border-radius: 8px; background: white; font-size: 16px; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-bell"></i> NOTIFICATIONS</h1>
+            <button class="btn btn-back" onclick="goBack()">⬅ BACK</button>
+        </div>
+
+        <div class="filters">
+            <select class="filter-select" id="filterType" onchange="loadNotifications()">
+                <option value="all">All Types</option>
+                <option value="overdue">Overdue</option>
+                <option value="due_soon">Due Soon</option>
+                <option value="assignment">Assignments</option>
+                <option value="payment">Payments</option>
+            </select>
+            <select class="filter-select" id="filterStatus" onchange="loadNotifications()">
+                <option value="all">All Status</option>
+                <option value="unread">Unread Only</option>
+                <option value="read">Read Only</option>
+            </select>
+            <button class="btn btn-primary" onclick="markAllAsRead()" style="margin-left: auto;">
+                <i class="fas fa-check-double"></i> MARK ALL READ
+            </button>
+        </div>
+
+        <div class="notifications-list" id="notificationsList">
+            <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading notifications...</div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="notifications.js"></script>
+    <script>
+        const supabaseUrl = 'https://jahrvqdxbdcnqnxuhewf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphaHJ2cWR4YmRjbnFueHVoZXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3MDY4ODUsImV4cCI6MjA3ODI4Mjg4NX0._Q8_o41iN2_roejx67FvOQ8DlMApPdw0L3bmWhymgNc';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            currentUser = await validateSession();
+            await loadNotifications();
+        });
+
+        async function loadNotifications() {
+            try {
+                const filterType = document.getElementById('filterType').value;
+                const filterStatus = document.getElementById('filterStatus').value;
+                
+                let query = supabase
+                    .from('notifications')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+
+                if (filterType !== 'all') {
+                    query = query.eq('type', filterType);
+                }
+                if (filterStatus === 'unread') {
+                    query = query.eq('is_read', false);
+                } else if (filterStatus === 'read') {
+                    query = query.eq('is_read', true);
+                }
+
+                const { data: notifications, error } = await query;
+
+                if (error) throw error;
+                displayNotifications(notifications || []);
+            } catch (error) {
+                document.getElementById('notificationsList').innerHTML = '<div class="empty-state">Error loading notifications</div>';
+            }
+        }
+
+        function displayNotifications(notifications) {
+            const container = document.getElementById('notificationsList');
+            
+            if (!notifications.length) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-bell-slash"></i>
+                        <h3>No Notifications</h3>
+                        <p>You're all caught up! New notifications will appear here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            notifications.forEach(notif => {
+                const timeAgo = getTimeAgo(new Date(notif.created_at));
+                html += `
+                    <div class="notification-item ${!notif.is_read ? 'unread' : ''}" 
+                         onclick="handleNotificationClick('${notif.id}', '${notif.type}', '${notif.related_id}')">
+                        <div class="notification-header">
+                            <div class="notification-title">
+                                ${getNotificationIcon(notif.type)} ${notif.title}
+                            </div>
+                            ${!notif.is_read ? '<span class="notification-badge">NEW</span>' : ''}
+                        </div>
+                        <div class="notification-message">${notif.message}</div>
+                        <div class="notification-meta">
+                            <span class="notification-time">${timeAgo}</span>
+                            <div class="notification-actions">
+                                ${!notif.is_read ? 
+                                    `<button class="action-btn btn-mark-read" onclick="event.stopPropagation(); markAsRead('${notif.id}')">
+                                        <i class="fas fa-check"></i> Mark Read
+                                    </button>` : 
+                                    ''
+                                }
+                                <button class="action-btn" onclick="event.stopPropagation(); deleteNotification('${notif.id}')" style="background: #dc3545; color: white;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        async function handleNotificationClick(notificationId, type, relatedId) {
+            // Mark as read first
+            await markNotificationAsRead(notificationId);
+            
+            // Navigate based on notification type
+            switch(type) {
+                case 'overdue':
+                case 'due_soon':
+                case 'assignment':
+                case 'payment':
+                    if (relatedId) {
+                        window.location.href = `order-details.html?id=${relatedId}`;
+                    } else {
+                        window.location.href = 'all-orders.html';
+                    }
+                    break;
+                default:
+                    // Stay on notifications page
+                    await loadNotifications();
+                    break;
+            }
+        }
+
+        async function markAsRead(notificationId) {
+            await markNotificationAsRead(notificationId);
+            await loadNotifications();
+            showNotification('Notification marked as read', '', 'success');
+        }
+
+        async function markAllAsRead() {
+            try {
+                const { error } = await supabase
+                    .from('notifications')
+                    .update({ is_read: true })
+                    .eq('user_id', currentUser.id)
+                    .eq('is_read', false);
+
+                if (error) throw error;
+                
+                await loadNotifications();
+                showNotification('All notifications marked as read', '', 'success');
+            } catch (error) {
+                alert('Error marking all as read: ' + error.message);
+            }
+        }
+
+        async function deleteNotification(notificationId) {
+            if (!confirm('Delete this notification?')) return;
+            
+            try {
+                const { error } = await supabase
+                    .from('notifications')
+                    .delete()
+                    .eq('id', notificationId);
+
+                if (error) throw error;
+                
+                await loadNotifications();
+                showNotification('Notification deleted', '', 'success');
+            } catch (error) {
+                alert('Error deleting notification: ' + error.message);
+            }
+        }
+
+        function getNotificationIcon(type) {
+            const icons = {
+                'overdue': '🚨',
+                'due_soon': '📅',
+                'assignment': '👨‍💼',
+                'payment': '💰',
+                'success': '✅',
+                'info': 'ℹ️',
+                'warning': '⚠️'
+            };
+            return icons[type] || '🔔';
+        }
+
+        function getTimeAgo(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return date.toLocaleDateString();
+        }
+
+        function goBack() {
+            if (currentUser.role === 'admin') {
+                window.location.href = 'admin-dashboard.html';
+            } else {
+                window.location.href = 'worker-dashboard.html';
+            }
+        }
+    </script>
+</body>
+</html>
